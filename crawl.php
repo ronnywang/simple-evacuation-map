@@ -30,6 +30,8 @@ class Crawler
                     continue;
                 }
                 $url = 'https://119.hccg.gov.tw' . $a_dom->getAttribute('href');
+                $url = str_replace("\n", "", $url);
+                $url = str_replace("\r", "", $url);
 
                 $village_id = Helper::getVillageIdByFullName($matches[1]);
                 self::addLog($village_id, 'tw.all', $url, 1);
