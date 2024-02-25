@@ -18,6 +18,38 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['64000'] = function() { // 高雄市
+            $entry = 'https://precaution.kcg.gov.tw/main/index.aspx';
+            $doc = new DOMDocument();
+            $content = Helper::http($entry);
+            $content = str_replace('<head>', '<head><meta charset="utf-8">', $content);
+
+            @$doc->loadHTML($content);
+            foreach ($doc->getElementsByTagName('a') as $a_dom) {
+                if (!preg_match('#area\/(\d+)\.aspx#', $a_dom->getAttribute('href'), $matches)) {
+                    continue;
+                }
+                $name = $a_dom->nodeValue . '區';
+                $town_id = Helper::getTownId('64000', $name);
+
+                $url = 'https://precaution.kcg.gov.tw/area/' . $matches[1] . '.aspx';
+                $doc2 = new DOMDocument();
+                $content = Helper::http($url);
+                $content = str_replace('<head>', '<head><meta charset="utf-8">', $content);
+                @$doc2->loadHTML($content);
+                foreach ($doc2->getElementsByTagName('a') as $a_dom2) {
+                    if (!preg_match('#.*里$#', $a_dom2->nodeValue)) {
+                        continue;
+                    }
+                    $name = trim($a_dom2->nodeValue);
+                    $url = $a_dom2->getAttribute('href');
+                    $url = str_replace('../', 'https://precaution.kcg.gov.tw/', $url);
+                    $village_id = Helper::getVillageId($town_id, $name);
+                    self::addLog($village_id, 'tw.all', $url);
+                }
+            }
+        };
+
         $crawls['10018'] = function() { // 新竹市
             $cache_file = __DIR__ . '/cache/10018.html';
             if (!file_exists($cache_file)) {
