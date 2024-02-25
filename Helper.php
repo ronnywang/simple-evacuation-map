@@ -35,6 +35,7 @@ class Helper
             $line = trim($line);
             list($id, $name) = explode('=', $line, 2);
             $fullname[$id] = str_replace('臺灣省', '', $name);
+            $fullname[$id] = str_replace('福建省', '', $fullname[$id]);
             if (substr($id, -3) != '000') {
                 $parent_id = sprintf("%05d000", substr($id, 0, 5));
                 if (isset($map[$parent_id])) {
@@ -76,7 +77,6 @@ class Helper
         if (isset(self::$_village_full_name[$name])) {
             return self::$_village_full_name[$name];
         }
-        var_dump(self::$_village_full_name);
         throw new Exception("Village not found: $name");
     }
 
