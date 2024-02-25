@@ -18,6 +18,35 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['09007'] = function() { // 連江縣
+            for ($page = 1; ; $page ++) {
+                $cache_file = __DIR__ . '/cache/09007-' . $page . '.json';
+                if (!file_exists($cache_file)) {
+                    system("curl 'https://www.lcfd.gov.tw/disaster/wp-admin/admin-ajax.php' -XPOST -d'action=sf-search&data%5Bsearch-id%5D=datamap&data%5Bpage%5D=$page' > $cache_file");
+                }
+                $json = json_decode(file_get_contents($cache_file));
+                if (!$json or !$json->result) {
+                    break;
+                }
+                foreach ($json->result as $record) {
+                    //         <a href="https://www.lcfd.gov.tw/disaster/wp-content/uploads/2021/07/003連江縣北竿鄉橋仔村簡易疏散避難地圖EN-scaled.jpg" >Qiaozi Village, Beigan Township Simple Evacuation Map(PDF)</a>
+                    //         // 連江縣南竿鄉介壽村簡易疏散避難地圖
+                    if (!preg_match('#<a href="([^"]+)"#u', $record, $matches)) {
+                        continue;
+                    }
+                    $url = $matches[1];
+                    if (!preg_match('#(連江縣.*)簡易疏散避難地圖(EN)?#', $url, $matches)) {
+                        continue;
+                    }
+                    $village_id = Helper::getVillageIdByFullName($matches[1]);
+                    if (count($matches) > 2 and $matches[2] == 'EN') {
+                        self::addLog($village_id, 'en.all', $url);
+                    } else {
+                        self::addLog($village_id, 'tw.all', $url);
+                    }
+                }
+            }
+        };
         $crawls['64000'] = function() { // 高雄市
             $entry = 'https://precaution.kcg.gov.tw/main/index.aspx';
             $doc = new DOMDocument();
