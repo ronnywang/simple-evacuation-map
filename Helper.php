@@ -4,6 +4,7 @@ class Helper
 {
     protected static $_towns = null;
     protected static $_villages = null;
+    protected static $_village_full_name = null;
 
     public static function http($url)
     {
@@ -27,17 +28,13 @@ class Helper
         if (!is_null(self::$_towns)) {
             return;
         }
-        $fp = fopen(__DIR__ . '/village.txt', 'r');
-        self::$_villages = [];
-        while ($values = fgetcsv($fp)) {
-            list($village_id, $town_id, $name) = $values;
-            self::$_villages[$village_id] = $name;
-        }
         $fp = fopen(__DIR__ . '/town.txt', 'r');
         $map = [];
+        $fullname = [];
         while ($line = fgets($fp)) {
             $line = trim($line);
             list($id, $name) = explode('=', $line, 2);
+            $fullname[$id] = str_replace('臺灣省', '', $name);
             if (substr($id, -3) != '000') {
                 $parent_id = sprintf("%05d000", substr($id, 0, 5));
                 if (isset($map[$parent_id])) {
@@ -47,6 +44,16 @@ class Helper
             $map[$id] = $name;
         }
         self::$_towns = $map;
+
+        $fp = fopen(__DIR__ . '/village.txt', 'r');
+        self::$_villages = [];
+        self::$_village_full_name = [];
+        while ($values = fgetcsv($fp)) {
+            list($village_id, $town_id, $name) = $values;
+            self::$_villages[$village_id] = $name;
+
+            self::$_village_full_name[$fullname[$town_id] . $name] = $village_id;
+        }
     }
 
     public static function getTownId($county_id, $town_name)
@@ -61,6 +68,16 @@ class Helper
             }
         }
         throw new Exception("Town not found: $county_id, $town_name");
+    }
+
+    public static function getVillageIdByFullName($name)
+    {
+        self::getTowns();
+        if (isset(self::$_village_full_name[$name])) {
+            return self::$_village_full_name[$name];
+        }
+        var_dump(self::$_village_full_name);
+        throw new Exception("Village not found: $name");
     }
 
     public static function getVillageId($town_id, $village_name)
