@@ -25,7 +25,7 @@ $stats = [];
 foreach ($set as $village_id => $c) {
     $county_id = substr($village_id, 0, 5);
     $town_id = substr($village_id, 0, 8);
-    foreach ([$county_id, $town_id] as $k) {
+    foreach (['all', $county_id, $town_id] as $k) {
         if (!array_key_exists($k, $stats)) {
             $stats[$k] = [
                 'hit' => 0,
@@ -51,13 +51,25 @@ foreach(['county', 'town'] as $k) {
 fclose($fp);
 
 uasort($stats, function($a, $b) {
-    return 1000 * $a['hit'] / $a['total'] - 1000 * $b['hit'] / $b['total'];
+    $delta = $a['hit'] / $a['total'] - $b['hit'] / $b['total'];
+    if ($delta > 0) {
+        return -1;
+    } elseif ($delta < 0) {
+        return 1;
+    }
+
+    $delta = $a['total'] - $b['total'];
+    if ($delta > 0) {
+        return -1;
+    } elseif ($delta < 0) {
+        return 1;
+    }
 });
-$stats = array_reverse($stats, true);
 
 $fp = fopen('stat.csv', 'w');
+$map['all'] = '全國';
 fputcsv($fp, ['level', 'id', 'name', 'hit', 'total']);
-foreach (['county' => 5, 'town' => 8] as $level => $len) {
+foreach (['all' => 3, 'county' => 5, 'town' => 8] as $level => $len) {
     foreach ($stats as $id => $stat) {
         if (strlen($id) != $len) {
             continue;
