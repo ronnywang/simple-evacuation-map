@@ -18,6 +18,26 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['10018'] = function() { // 新竹市
+            $cache_file = __DIR__ . '/cache/10018.html';
+            if (!file_exists($cache_file)) {
+                system(sprintf("curl -dpageSize=1000 -XPOST 'https://119.hccg.gov.tw/chhcfd/app/data/query?module=evacuationMap&id=45' > %s", $cache_file));
+            }
+            $doc = new DOMDocument();
+            @$doc->loadHTML(file_get_contents($cache_file));
+            foreach ($doc->getElementsByTagName('a') as $a_dom) {
+                if (!preg_match('#(新竹市.*里)簡易疏散避難地圖#u', $a_dom->getAttribute('title'), $matches)) {
+                    continue;
+                }
+                $url = 'https://119.hccg.gov.tw' . $a_dom->getAttribute('href');
+
+                $village_id = Helper::getVillageIdByFullName($matches[1]);
+                self::addLog($village_id, 'tw.all', $url, 1);
+                self::addLog($village_id, 'en.all', $url, 2);
+            }
+
+            
+        };
         $crawls['10017'] = function() { // 基隆市
             $entry = 'https://www.klfd.klcg.gov.tw/tw/klfd1/2107-106563.html';
             $doc = new DOMDocument();
