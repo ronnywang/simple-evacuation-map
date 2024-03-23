@@ -18,6 +18,45 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['09020'] = function() { // 金門縣
+            $entry = 'https://kmfb.kinmen.gov.tw/News_Photo.aspx?n=A6CCA2F56E78991C&sms=59691E739AAFFB67';
+            $doc = new DOMDocument();
+            @$doc->loadHTML(Helper::http($entry));
+            foreach ($doc->getElementsByTagName('a') as $a_dom) {
+                $text = $a_dom->nodeValue;
+                if (preg_match('/(.*)簡易疏散避難地圖/', $text, $matches)) {
+                    $townname = $matches[1];
+                } elseif (strpos($text, 'Township') !== false) {
+                    $townname = '';
+                } else {
+                    continue;
+                }
+                $url = 'https://kmfb.kinmen.gov.tw/' . $a_dom->getAttribute('href');
+                $doc2 = new DOMDocument;
+                @$doc2->loadHTML(Helper::http($url));
+                foreach ($doc2->getElementsByTagName('a') as $a_dom) {
+                    if (preg_match('#^\d+年(.*)#u', $a_dom->getAttribute('data-alt'), $matches)) {
+                        $village_name = trim($townname . $matches[1]);
+                        $village_id = Helper::getVillageIdByFullName($village_name);
+                        self::addLog($village_id, "tw.all", $a_dom->getAttribute('href'), '');
+                    } elseif (preg_match('#(金門縣.*)簡易疏散避難圖$#', $a_dom->getAttribute('data-alt'), $matches)) {
+                        if (strpos($matches[1], '金門縣烈嶼鄉鄉') !== false) {
+                            $matches[1] = str_replace('金門縣烈嶼鄉鄉', '金門縣烈嶼鄉', $matches[1]);
+                        }
+                        $village_id = Helper::getVillageIdByFullName($matches[1]);
+                        self::addLog($village_id, "tw.all", $a_dom->getAttribute('href'), '');
+                    } elseif (preg_match('#金門縣(.*)簡易疏散避難圖-英文_(page-|p)(\d+)#', $a_dom->getAttribute('data-alt'), $matches)) {
+                        $town_id = Helper::getTownId('09020', $matches[1]);
+                        $village_id = $town_id . sprintf("%03d", intval($matches[3]));
+                        self::addLog($village_id, "en.all", $a_dom->getAttribute('href'), '');
+                    } elseif (preg_match('#防災避難地圖-(.*)各里\d+_page-(\d+)#', $a_dom->getAttribute('data-alt'), $matches)) {
+                        $town_id = Helper::getTownId('09020', $matches[1]);
+                        $village_id = $town_id . sprintf("%03d", intval($matches[2]));
+                        self::addLog($village_id, "tw.all", $a_dom->getAttribute('href'), '');
+                    }
+                }
+            }
+        };
         $crawls['10007'] = function() { // 彰化縣
             $entry = 'https://dpcwh.chfd.gov.tw/info.aspx?Type=2';
             $doc = new DOMDocument();
