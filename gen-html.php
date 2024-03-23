@@ -56,8 +56,16 @@ fclose($fp);
 $fp = fopen('village-log.csv', 'r');
 $cols = fgetcsv($fp);
 $current_id = null;
+$logs = [];
 while ($rows = fgetcsv($fp)) {
     $values = array_combine($cols, $rows);
+    $logs[] = $values;
+}
+
+usort($logs, function($a, $b) {
+    return $a['village_id'] <=> $b['village_id'];
+});
+foreach ($logs as $values) {
     $town_id = substr($values['village_id'], 0, 8);
 
     if ($town_id != $current_id) {
