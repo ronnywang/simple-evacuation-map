@@ -17,6 +17,10 @@ class Helper
         // useragent chrome
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        if (strpos($url, 'dpcwh.chfd.gov.tw')) {
+            // ssl verify disable
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        }
         $html = curl_exec($ch);
         curl_close($ch);
         file_put_contents($cache_file, $html);
