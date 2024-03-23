@@ -8,11 +8,15 @@ class Helper
 
     public static function http($url)
     {
-        error_log($url);
         $cache_file = __DIR__ . '/cache/' . str_replace('/', '_', $url);
         if (file_exists($cache_file)) {
             return file_get_contents($cache_file);
         }
+        // encode https://foo.com/中文中文/中文中文 to https://foo.com/%E4%B8%AD%E6%96%87%E4%B8%AD%E6%96%87/%E4%B8%AD%E6%96%87%E4%B8%AD%E6%96%87
+        $url = preg_replace_callback('/[^:?=&%\/A-Za-z0-9_\-\.!~\*\'\(\)]/', function($matches) {
+            return rawurlencode($matches[0]);
+        }, $url);
+        error_log($url);
         $ch = curl_init($url);
         // useragent chrome
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36');
@@ -22,6 +26,10 @@ class Helper
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         }
         $html = curl_exec($ch);
+        $info = curl_getinfo($ch);
+        if ($info['http_code'] != 200) {
+            throw new Exception("HTTP code: {$info['http_code']}");
+        }
         curl_close($ch);
         file_put_contents($cache_file, $html);
         return $html;
