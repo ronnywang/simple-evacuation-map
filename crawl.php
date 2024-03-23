@@ -18,6 +18,50 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['10007'] = function() { // 彰化縣
+            $entry = 'https://dpcwh.chfd.gov.tw/info.aspx?Type=2';
+            $doc = new DOMDocument();
+            $content = Helper::http($entry);
+            $content = str_replace('<head>', '<head><meta charset="utf-8">', $content);
+            @$doc->loadHTML($content);
+            foreach ($doc->getElementsByTagName('a') as $a_dom) {
+                if (!preg_match('#(.*)村里簡易疏散避難圖.pdf#u', $a_dom->nodeValue, $matches)) {
+                    continue;
+                }
+                $town_id = Helper::getTownId('10007', $matches[1]);
+
+                $pdf_url = $a_dom->getAttribute('href');
+                $pdf_url = preg_replace_callback('#/([^/]+).pdf#', function($matches) {
+                    return '/' . urlencode($matches[1]) . '.pdf';
+                }, $pdf_url);
+                $pdf_url = "https://dpcwh.chfd.gov.tw/" . $pdf_url;
+                $pdf_content = Helper::http($pdf_url);
+                file_put_contents('tmp.pdf', $pdf_content);
+                $content = `pdftotext tmp.pdf /dev/stdout`;
+                preg_match_all('#(彰化縣.*)(水災|地震)簡易疏散避難圖#u', $content, $matches);
+                foreach ($matches[1] as $idx => $village_name) {
+                    error_log($village_name);
+                    // 彰化縣鹿港鎮頂厝里、鹿和里、鹿東里
+                    if (strpos($village_name, '、')) {
+                        preg_match('#(彰化縣.*[鄉鎮市區])(.*)#u', $village_name, $matches2);
+                        foreach (explode('、', $matches2[2]) as $village_name) {
+                            $village_id = Helper::getVillageIdByFullName($matches2[1] . $village_name);
+                            $type = $matches[2][$idx] == '水災' ? 'flood' : 'earthquake';
+                            self::addLog($village_id, "tw.{$type}", $pdf_url, $idx + 1);
+                        }
+                        continue;
+                    }
+                    if (strpos($village_name, '縣庄村') === false) {
+                        $village_name = str_replace('彰化縣芬園鄉縣', '彰化縣芬園鄉', $village_name);
+                    }
+                    $village_id = Helper::getVillageIdByFullName($village_name);
+                    $type = $matches[2][$idx] == '水災' ? 'flood' : 'earthquake';
+                    self::addLog($village_id, "tw.{$type}", $pdf_url, $idx + 1);
+                }
+            }
+
+        };
+
         $crawls['09007'] = function() { // 連江縣
             for ($page = 1; ; $page ++) {
                 $cache_file = __DIR__ . '/cache/09007-' . $page . '.json';
