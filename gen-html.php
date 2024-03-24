@@ -7,9 +7,11 @@ $files = [];
 while ($rows = fgetcsv($fp)) {
     $values = array_combine($cols, $rows);
     if ($values['level'] == 'all') {
+        $values['id'] = 'index';
         continue;
-    }
-    if ($values['level'] == 'county') {
+        continue;
+        $target = "index.html";
+    } else if ($values['level'] == 'county') {
         $target = "index.html";
     } else { 
         $target = substr($values['id'], 0, 5) . '.html';
@@ -23,7 +25,7 @@ while ($rows = fgetcsv($fp)) {
             <tr>
                 <th>代碼</th>
                 <th>行政區</th>
-                <th>子行政區數</th>
+                <th>村里數</th>
                 <th>已完成數</th>
             </tr>
 EOT);
