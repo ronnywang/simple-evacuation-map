@@ -9,6 +9,10 @@ class Helper
     public static function http($url, $return_file = false)
     {
         $cache_file = __DIR__ . '/cache/' . str_replace('/', '_', $url);
+        if (strlen(basename($cache_file)) > 255) {
+            $cache_file = __DIR__ . '/cache/' . substr(basename($cache_file), 0, 200) . '-' . md5($url);
+        }
+
         if (file_exists($cache_file)) {
             if ($return_file) {
                 return $cache_file;
