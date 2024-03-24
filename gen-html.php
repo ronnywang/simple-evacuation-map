@@ -8,8 +8,6 @@ while ($rows = fgetcsv($fp)) {
     $values = array_combine($cols, $rows);
     if ($values['level'] == 'all') {
         $values['id'] = 'index';
-        continue;
-        continue;
         $target = "index.html";
     } else if ($values['level'] == 'county') {
         $target = "index.html";
