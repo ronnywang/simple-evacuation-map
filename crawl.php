@@ -18,6 +18,71 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['10004'] = function() { // 新竹縣
+            $entry = 'https://odm.hsinchu.gov.tw/DeepGlowing/Maps?page=1';
+            $doc = new DOMDocument();
+            @$doc->loadHTML(Helper::http($entry));
+            $year = null;
+            foreach ($doc->getElementsByTagName('a') as $a_dom) {
+                $title = $a_dom->getAttribute('title');
+                if (!preg_match('#新竹縣(\d+)年村里簡易疏散避難地圖-(.*版)#', $title, $matches)) {
+                    continue;
+                }
+                if (is_null($year)) {
+                    $year = $matches[1];
+                } elseif ($year != $matches[1]) {
+                    break;
+                }
+                error_log($title);
+                if ($matches[2] == '中文版') {
+                    $type = 'tw.all';
+                } elseif ($matches[2] == '英文版') {
+                    $type = 'en.all';
+                } else {
+                    throw new Exception("Unknown type: " . $matches[2]);
+                }
+
+                $href = 'https://odm.hsinchu.gov.tw' . $a_dom->getAttribute('href');
+                $target = Helper::http($href, true);
+                $rar = RarArchive::open($target);
+                $entries = $rar->getEntries();
+                foreach ($entries as $entry) {
+                    $village_name = $entry->getName();
+                    if (!strpos($village_name, 'pdf')) {
+                        continue;
+                    }
+
+                    $tmp_file = __DIR__ . '/tmp.pdf';
+                    $entry->extract(false, $tmp_file);
+                    $content = `pdftotext $tmp_file /dev/stdout`;
+                    if (!$content) {
+                        throw new Exception("Failed to extract text from $tmp_file");
+                    }
+
+                    $name = $entry->getName();
+                    if ($type == 'tw.all') {
+                        if (!preg_match('#_(.*)_中文版_(\d+)幅#', $name, $matches)) {
+                            throw new Exception("Unknown name: " . $name);
+                        }
+                        $town_id = Helper::getTownId('10004', $matches[1]);
+                        for ($i = 1; $i <= $matches[2]; $i++) {
+                            $village_id = $town_id . sprintf("%03d", $i);
+                            self::addLog($village_id, $type, $href, "rar:{$name}:{$i}");
+                        }
+                    } else {
+                        preg_match_all('#NO. (\d+)#', $content, $matches);
+                        foreach ($matches[1] as $idx => $village_id) {
+                            $idx += 1;
+                            if (strlen($village_id) == 10) {
+                                $village_id = substr($village_id, 0, 8) . '0' . substr($village_id, 8);
+                            }
+                            self::addLog($village_id, $type, $href, "rar:{$name}:{$idx}");
+                        }
+                    }
+                }
+            }
+        };
+
         $crawls['10016'] = function() { // 澎湖縣
             $entry = 'https://www.phfd.gov.tw/home.jsp?id=25';
             $doc = new DOMDocument();
