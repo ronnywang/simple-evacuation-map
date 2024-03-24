@@ -10,28 +10,45 @@ while ($rows = fgetcsv($fp)) {
         continue;
     }
 
-    $pdf_content = Helper::http($values['url']);
     if (strpos($values['url'], '.jpg')) {
         mkdir($target);
-        file_put_contents($target . '/image.jpg', $pdf_content);
+        copy(Helper::http($values['url'], true),  $target . '/image.jpg');
         file_put_contents($target . '/page-html.html', '<img src="image.jpg" style="width: 100%;">');
         continue;
     }
-    file_put_contents(__DIR__ . '/tmp.pdf', $pdf_content);
 
-
-    if ($page = $values['note']) {
-        $cmd = sprintf("pdftohtml -c tmp.pdf -f %d -l %d -s %s",
+    $page = $values['note'];
+    if (preg_match('#^\d+$#', $page)) {
+        $cmd = sprintf("pdftohtml -c %s -f %d -l %d -s %s",
+            escapeshellarg(Helper::http($values['url'], true)),
             $page,
             $page,
             escapeshellarg($target . '/page')
         );
+    } elseif (preg_match('#^rar:(.*):(\d+)$#', $page, $matches)) {
+        $rarfile = Helper::http($values['url'], true);
+        $rar = RarArchive::open($rarfile);
+        $entries = $rar->getEntries();
+        foreach ($entries as $entry) {
+            if ($entry->getName() == $matches[1]) {
+                $tmp_file = __DIR__ . '/tmp.pdf';
+                $entry->extract(false, $tmp_file);
+                $cmd = sprintf("pdftohtml -c tmp.pdf -f %d -l %d -s %s",
+                    $matches[2],
+                    $matches[2],
+                    escapeshellarg($target . '/page')
+                );
+            }
+        }
+
     } else {
-        $cmd = sprintf("pdftohtml -c tmp.pdf -s %s",
+        $cmd = sprintf("pdftohtml -c %s -s %s",
+            escapeshellarg(Helper::http($values['url'], true)),
             escapeshellarg($target . '/page')
         );
     }
     mkdir($target);
+    error_log($cmd);
     exec($cmd, $output, $return_var);
     if ($return_var !== 0) {
         echo "Error: {$values['village_id']}\n";
