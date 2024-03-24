@@ -18,6 +18,36 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['10020'] = function() { // 嘉義市
+            $entry = 'https://dpinfo.chiayi.gov.tw/info.aspx?Type=1';
+            $content = Helper::http($entry);
+            preg_match_all('#assets/img/疏散避難地圖/([a-z]+)/([^.]*).jpg#', $content, $matches);
+            foreach ($matches[1] as $idx => $type) {
+                if ($type[1] == 'e') {
+                    $townname = '嘉義市東區';
+                } elseif ($type[1] == 'w') {
+                    $townname = '嘉義市西區';
+                } else {
+                    throw new Exception("Unknown type: " . $type);
+                }
+                $village_name = $matches[2][$idx];
+                if ($type[0] == 'w') {
+                    $type = 'tw.flood';
+                } elseif ($type[0] == 'e') {
+                    $type = 'tw.earthquake';
+                } elseif ($type[0] == 's') {
+                    // 坡災
+                    $type = 'tw.slope';
+                } elseif ($type[0] == 'p') {
+                    $type = 'tw.poison';
+                } elseif ($type[0] == 'r') {
+                    $type = 'tw.info';
+                    $village_name = str_replace('避難資訊', '', $village_name);
+                }
+                $village_id = Helper::getVillageIdByFullName($townname . $village_name);
+                self::addLog($village_id, $type, 'https://dpinfo.chiayi.gov.tw/' . $matches[0][$idx]);
+            }
+        };
         $crawls['09020'] = function() { // 金門縣
             $entry = 'https://kmfb.kinmen.gov.tw/News_Photo.aspx?n=A6CCA2F56E78991C&sms=59691E739AAFFB67';
             $doc = new DOMDocument();
