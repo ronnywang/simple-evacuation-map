@@ -18,6 +18,32 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['10002'] = function() { // 宜蘭縣
+            $entry = 'https://yidp.e-land.gov.tw/News.aspx?n=A01C02759088F51E&sms=95C9FC8E502A7F80';
+            $doc = new DOMDocument();
+            @$doc->loadHTML(Helper::http($entry));
+            foreach ($doc->getElementsByTagName('a') as $a_dom) {
+                $title = $a_dom->getAttribute('title');
+                if (!preg_match('#\d+年(.*)村里簡易疏散避難圖#', $title, $matches)) {
+                    continue;
+                }
+                $href = 'https://yidp.e-land.gov.tw/' . $a_dom->getAttribute('href');
+                $doc2 = new DOMDocument();
+                @$doc2->loadHTML(Helper::http($href));
+                foreach ($doc2->getElementsByTagName('a') as $a_dom2) {
+                    $title = $a_dom2->getAttribute('title');
+                    if (preg_match('#(\d+)-(\d+)-(.*)簡易疏散避難圖\(英\)#', $title, $matches)) {
+                        $type = 'en.all';
+                    } else if (preg_match('#(\d+)-(\d+)-(.*)簡易疏散避難圖#', $title, $matches)) {
+                        $type = 'tw.all';
+                    } else {
+                        continue;
+                    }
+                    $village_id = $matches[1] . '0'. sprintf("%03d", $matches[2]);
+                    self::addLog($village_id, $type, $a_dom2->getAttribute('href'));
+                }
+            }
+        };
         $crawls['10004'] = function() { // 新竹縣
             $entry = 'https://odm.hsinchu.gov.tw/DeepGlowing/Maps?page=1';
             $doc = new DOMDocument();
