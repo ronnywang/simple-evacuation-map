@@ -6,10 +6,13 @@ class Helper
     protected static $_villages = null;
     protected static $_village_full_name = null;
 
-    public static function http($url)
+    public static function http($url, $return_file = false)
     {
         $cache_file = __DIR__ . '/cache/' . str_replace('/', '_', $url);
         if (file_exists($cache_file)) {
+            if ($return_file) {
+                return $cache_file;
+            }
             return file_get_contents($cache_file);
         }
         // encode https://foo.com/中文中文/中文中文 to https://foo.com/%E4%B8%AD%E6%96%87%E4%B8%AD%E6%96%87/%E4%B8%AD%E6%96%87%E4%B8%AD%E6%96%87
@@ -21,6 +24,8 @@ class Helper
         // useragent chrome
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        // output to $cache file
+        curl_setopt($ch, CURLOPT_FILE, fopen($cache_file, 'w'));
         if (strpos($url, 'dpcwh.chfd.gov.tw')) {
             // ssl verify disable
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -28,10 +33,13 @@ class Helper
         $html = curl_exec($ch);
         $info = curl_getinfo($ch);
         if ($info['http_code'] != 200) {
+            unlink($cache_file);
             throw new Exception("HTTP code: {$info['http_code']}");
         }
         curl_close($ch);
-        file_put_contents($cache_file, $html);
+        if ($return_file) {
+            return $cache_file;
+        }
         return $html;
     }
 
