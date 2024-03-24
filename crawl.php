@@ -18,6 +18,48 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['10016'] = function() { // 澎湖縣
+            $entry = 'https://www.phfd.gov.tw/home.jsp?id=25';
+            $doc = new DOMDocument();
+            @$doc->loadHTML(Helper::http($entry));
+            foreach ($doc->getElementsByTagName('a') as $a_dom) {
+                $href = $a_dom->getAttribute('href');
+                if (strpos($href, 'dataserno=') === false) {
+                    continue;
+                }
+                $href = 'https://www.phfd.gov.tw/' . $href;
+                $village_name = '澎湖縣' . trim($a_dom->nodeValue);
+                $village_id = Helper::getVillageIdByFullName($village_name);
+
+                $doc2 = new DOMDocument();
+                @$doc2->loadHTML(Helper::http($href));
+                foreach ($doc2->getElementsByTagName('a') as $a_dom2) {
+                    $href = $a_dom2->getAttribute('href');
+                    if (strpos($href, '#image-') === false) {
+                        continue;
+                    }
+                    if ($a_dom2->getAttribute('class')) {
+                        continue;
+                    }
+                    $url = 'https://www.phfd.gov.tw/' . $a_dom2->getElementsByTagName('img')[0]->getAttribute('src');
+                    if (!preg_match('#(.*)\((.*)\)#u', trim($a_dom2->nodeValue), $matches)) {
+                        throw new Exception("Unknown village name: " . trim($a_dom2->nodeValue));
+                    }
+                    $village_name = '澎湖縣' . $matches[1];
+                    if ($matches[2] == '中文版') {
+                        $type = 'tw.all';
+                    } else if ($matches[2] == '英文版') {
+                        $type = 'en.all';
+                    } else {
+                        throw new Exception("Unknown type: " . $matches[2]);
+                    }
+                    $village_id = Helper::getVillageIdByFullName($village_name);
+
+                    self::addLog($village_id, $type, $url);
+                }
+            }
+        };
+
         $crawls['10020'] = function() { // 嘉義市
             $entry = 'https://dpinfo.chiayi.gov.tw/info.aspx?Type=1';
             $content = Helper::http($entry);
