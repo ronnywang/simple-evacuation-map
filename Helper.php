@@ -13,7 +13,7 @@ class Helper
             $cache_file = __DIR__ . '/cache/' . substr(basename($cache_file), 0, 200) . '-' . md5($url);
         }
 
-        if (file_exists($cache_file)) {
+        if (file_exists($cache_file) and filesize($cache_file) > 0) {
             if ($return_file) {
                 return $cache_file;
             }
@@ -23,14 +23,13 @@ class Helper
         $url = preg_replace_callback('/[^:?=&%\/A-Za-z0-9_\-\.!~\*\'\(\)]/', function($matches) {
             return rawurlencode($matches[0]);
         }, $url);
-        error_log($url);
         $ch = curl_init($url);
         // useragent chrome
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         // output to $cache file
         curl_setopt($ch, CURLOPT_FILE, fopen($cache_file, 'w'));
-        if (strpos($url, 'dpcwh.chfd.gov.tw')) {
+        if (strpos($url, 'dpcwh.chfd.gov.tw') or strpos($url, 'www.taichung.gov.tw')) {
             // ssl verify disable
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         }
@@ -38,13 +37,13 @@ class Helper
         $info = curl_getinfo($ch);
         if ($info['http_code'] != 200) {
             unlink($cache_file);
-            throw new Exception("HTTP code: {$info['http_code']}");
+            throw new Exception("HTTP code: {$info['http_code']} $url");
         }
         curl_close($ch);
         if ($return_file) {
             return $cache_file;
         }
-        return $html;
+        return file_get_contents($cache_file);
     }
 
     protected static function getTowns()
