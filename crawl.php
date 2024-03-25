@@ -473,7 +473,12 @@ class Crawler
                     $url = $a_dom2->getAttribute('href');
                     $url = str_replace('../', 'https://precaution.kcg.gov.tw/', $url);
                     $village_id = Helper::getVillageId($town_id, $name);
-                    self::addLog($village_id, 'tw.all', $url);
+                    if ($village_id == '64000190012') {
+                        // https://precaution.kcg.gov.tw/files/%E5%B2%A1%E5%B1%B1%E5%8D%80/%E5%B2%A1%E5%B1%B1%E5%8D%80%E5%BE%8C%E5%8D%94%E9%87%8C.pdf
+                        self::addLog($village_id, 'tw.all', $url, 1);
+                    } else {
+                        self::addLog($village_id, 'tw.all', $url);
+                    }
                 }
             }
         };
