@@ -42,10 +42,15 @@ while ($rows = fgetcsv($fp)) {
         }
 
     } else {
+        try {
         $cmd = sprintf("pdftohtml -c %s -s %s",
             escapeshellarg(Helper::http($values['url'], true)),
             escapeshellarg($target . '/page')
         );
+        } catch (Exception $e) {
+            error_log($values['url']);
+            continue;
+        }
     }
     mkdir($target);
     error_log($cmd);
