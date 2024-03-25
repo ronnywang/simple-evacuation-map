@@ -18,6 +18,159 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['66000'] = function() { // 臺中市
+            $parse_lpsimplelist = function($url) {
+                $doc = new DOMDocument();
+                $content = Helper::http($url . '?PageSize=60');
+                $content = str_replace('<head>', '<head><meta charset="utf-8">', $content);
+                @$doc->loadHTML($content);
+                $ret = [];
+                foreach ($doc->getElementsByTagName('section') as $section_dom) {
+                    if ($section_dom->getAttribute('class') != 'list') {
+                        continue;
+                    }
+                    foreach ($section_dom->getElementsByTagName('a') as $a_dom) {
+                        if ($a_dom->getAttribute('class') == 'fileType pdf') {
+                            continue;
+                        }
+                        $href = $a_dom->getAttribute('href');
+                        if (strpos($href, 'http') !== 0) {
+                            $domain = parse_url($url, PHP_URL_SCHEME) . '://' . parse_url($url, PHP_URL_HOST);
+                            $href = $domain . $href;
+                        }
+                        $title = $a_dom->getAttribute('title');
+                        if ($title == '') {
+                            continue;
+                        }
+                        $ret[] = [$title, $href];
+                    }
+                }
+                if (!count($ret)) {
+                    throw new Exception("No link found in $url");
+                }
+                return $ret;
+            };
+
+            $parse_post = function($href, $townname) {
+                $domain = parse_url($href, PHP_URL_SCHEME) . '://' . parse_url($href, PHP_URL_HOST);
+                $doc = new DOMDocument();
+                $content = Helper::http($href);
+                $content = str_replace('<head>', '<head><meta charset="utf-8">', $content);
+                @$doc->loadHTML($content);
+                $ret = [];
+                $filename_ul = null;
+                foreach ($doc->getElementsByTagName('ul') as $ul_dom) {
+                    if ($ul_dom->getAttribute('class') == 'filename') {
+                        $filename_ul = $ul_dom;
+                        break;
+                    }
+                }
+                if (is_null($filename_ul)) {
+                    throw new Exception("No filename_ul found in $href");
+                }
+                foreach ($filename_ul->getElementsByTagName('a') as $a_dom) {
+                    $href = $a_dom->getAttribute('href');
+                    if (strpos($href, '.pdf') === false) {
+                        continue;
+                    }
+                    $href = $domain . $href;
+                    $text = $a_dom->nodeValue;
+                    $text = str_replace('WID-', '', $text);
+                    $text = str_replace('(中文版)', '', $text);
+                    $text = str_replace('(中文)', '', $text);
+                    $text = str_replace('(中)', '', $text);
+                    $text = str_replace("{$townname}_", "", $text);
+                    $text = str_replace("{$townname}", "", $text);
+                    $text = str_replace("簡易疏散避難地圖", "", $text);
+                    $text = str_replace("(英文版)", "(英文)", $text);
+                    $text = preg_replace('#^\d+#', '', $text);
+                    if (preg_match('#^(...?里).pdf$#u', $text, $matches)) {
+                        $village_name = $matches[1];
+                        $type = 'tw.all';
+                    } else if (preg_match('#^(..里)-英文.pdf$#u', $text, $matches)) {
+                        $village_name = $matches[1];
+                        $type = 'en.all';
+                    } else if (preg_match('#^(..里)\(英文\).pdf$#u', $text, $matches)) {
+                        $village_name = $matches[1];
+                        $type = 'en.all';
+                    } elseif (preg_match('#^(..里)疏散避難地圖\(\d+更新\).pdf$#u', $text, $matches)) {
+                        $village_name = $matches[1];
+                        $type = 'tw.all';
+                    } elseif (preg_match('#^(..里)疏散避難地圖英文版\(\d+更新\).pdf$#u', $text, $matches)) {
+                        $village_name = $matches[1];
+                        $type = 'en.all';
+                    } elseif (preg_match('#^(.*)_(.*)\(中\).pdf$#u', $text, $matches)) {
+                        $village_name = $matches[2];
+                        $type = 'tw.all';
+                    } elseif (preg_match('#^(..里)\(E\).pdf$#u', $text, $matches)) {
+                        $village_name = $matches[1];
+                        $type = 'en.all';
+                    } elseif (preg_match('#^(..里)（E）.pdf$#u', $text, $matches)) {
+                        $village_name = $matches[1];
+                        $type = 'en.all';
+                    } elseif (preg_match('#^(..里)疏散避難地圖英文版\(\d+更新\).pdf$#u', $text, $matches)) {
+                        $village_name = $matches[1];
+                        $type = 'en.all';
+                    } elseif ($text == 'WID.pdf') {
+                        continue;
+                    } elseif ($text == 'WIDe.pdf') {
+                        continue;
+                    } else {
+                        $pdffile = Helper::http($href, true);
+                        $text = `pdftotext $pdffile /dev/stdout`;
+                        if (!preg_match_all('#臺中市(.*)簡易疏散避難地圖#', $text, $matches)) {
+                            throw new Exception("Unknown text: $href");
+                        }
+                        foreach ($matches[1] as $idx => $village_name) {
+                            $village_name = str_replace($townname, '', $village_name);
+                            if (
+                                strpos($href, '中文') !== false
+                                or strpos($href, '中.pdf') !== false
+                                or strpos($href, '東區避難地圖112-') !== false
+                            ) {
+                                $type = 'tw.all';
+                            } elseif (
+                                strpos($href, '英文') !== false
+                                or strpos($href, 'district') !== false
+                                or strpos($href, 'e.pdf') !== false
+                                or strpos($href, '英.pdf') !== false
+                                or strpos($href, '東區避難地圖112e-') !== false
+                                or strpos($href, '東區避難地圖112-') !== false
+                            ) {
+                                $type = 'en.all';
+                            } else {
+                                throw new Exception("Unknown type: $href");
+                            }
+                            $village_id = Helper::getVillageIdByFullName('臺中市' . $townname . $village_name);
+                            self::addLog($village_id, $type, $href, count($matches[1]) > 1 ? $idx + 1 : '');
+                        }
+                        continue;
+                    }
+                    $village_id = Helper::getVillageIdByFullName('臺中市' . $townname . $village_name);
+                    self::addLog($village_id, $type, $href);
+                }
+                return $ret;
+            };
+
+            $entry = 'https://www.taichung.gov.tw/8868/9951/10104/Lpsimplelist';
+            foreach ($parse_lpsimplelist($entry) as $title_href) {
+                list($title, $href) = $title_href;
+                if (!preg_match('#(.*)各里簡易疏散避難地圖#', $title, $matches)) {
+                    continue;
+                }
+                $townname = $matches[1];
+                $domain = parse_url($href, PHP_URL_SCHEME) . '://' . parse_url($href, PHP_URL_HOST);
+
+                if (strpos($href, '/post') !== false) {
+                    $parse_post($href, $townname);
+                } else {
+                    foreach ($parse_lpsimplelist($href) as $title_href) {
+                        list($title, $href) = $title_href;
+                        $parse_post($href, $townname);
+                    }
+                }
+            }
+        };
         $crawls['10002'] = function() { // 宜蘭縣
             $entry = 'https://yidp.e-land.gov.tw/News.aspx?n=A01C02759088F51E&sms=95C9FC8E502A7F80';
             $doc = new DOMDocument();
