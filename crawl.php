@@ -27,6 +27,8 @@ class Crawler
                 '大同區.en' => 'https://dtdo.gov.taipei/cp.aspx?n=A49535822FEC0A4D&s=5D3B41E453E5DDDA',
                 '信義區' => 'https://xydo.gov.taipei/cp.aspx?n=825EBB2052804CE4&s=DF8FB6359DD94196',
                 '信義區.en' => 'https://xydo.gov.taipei/cp.aspx?n=825EBB2052804CE4&s=30F9BFCBC1B2A814',
+                '萬華區' => 'https://whdo.gov.taipei/News_Content.aspx?n=4957A99423B9DAE6&sms=299A4C13E7D72D89&s=DFB8D06FC981EE4C',
+                '萬華區.en' => 'https://whdo.gov.taipei/News_Content.aspx?n=4957A99423B9DAE6&sms=299A4C13E7D72D89&s=E1DCFBB68F520C53',
             ];
             foreach ($urls as $townname => $url) {
                 $doc = new DOMDocument();
