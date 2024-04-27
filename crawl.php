@@ -23,6 +23,8 @@ class Crawler
                 '松山區' => 'https://ssdo.gov.taipei/News_Content.aspx?n=48A0A8BA1E719FF2&sms=50B23E5C03F3888E&s=58D006985F09C3D8',
                 '中正區' => 'https://zzdo.gov.taipei/cp.aspx?n=0DE5F70690B4A156&s=7F52E41274E23612',
                 '中山區' => 'https://zsdo.gov.taipei/cp.aspx?n=507DE5444462B0B3',
+                '大同區' => 'https://dtdo.gov.taipei/cp.aspx?n=A49535822FEC0A4D',
+                '大同區.en' => 'https://dtdo.gov.taipei/cp.aspx?n=A49535822FEC0A4D&s=5D3B41E453E5DDDA',
             ];
             foreach ($urls as $townname => $url) {
                 $doc = new DOMDocument();
@@ -37,6 +39,13 @@ class Crawler
                     if (preg_match('#\d+(.*區.*里)_中文\(pdf檔\)#', $title, $matches)) {
                         $village_id = Helper::getVillageIdByFullName('臺北市' . $matches[1]);
                         self::addLog($village_id, 'tw.all', $pdf_url);
+                    } else if (preg_match('#\d+(.*區.*里)疏散避難資訊圖\(中文\)#', $title, $matches)) {
+                        $village_id = Helper::getVillageIdByFullName('臺北市' . $matches[1]);
+                        self::addLog($village_id, 'tw.info', $pdf_url);
+                    } elseif (preg_match('#Simple Evacuation Map\((.*里)\).pdf#', $title, $matches)) {
+                        $townname = str_replace('.en', '', $townname);
+                        $village_id = Helper::getVillageIdByFullName('臺北市' . $townname . $matches[1]); 
+                        self::addLog($village_id, 'en.all', $pdf_url);
                     } else if (preg_match('#Taipei City Evacuation Map\(pdf檔\)#', $title, $matches)) {
                         self::addLog($village_id, 'en.all', $pdf_url);
                     } elseif (preg_match('#(臺北市.*區.*里)簡易疏散避難地圖\(pdf檔\)#', $title, $matches)) {
