@@ -40,7 +40,18 @@ while ($rows = fgetcsv($fp)) {
                 );
             }
         }
-
+    } elseif (preg_match('#^zip:(\d+)$#', $page, $matches)) { // zip 裡面圖片
+        $zipfile = Helper::http($values['url'], true);
+        $zip = new ZipArchive;
+        $zip->open($zipfile);
+        $idx = $matches[1];
+        $name = $zip->getNameIndex($idx);
+        $ext = pathinfo($name, PATHINFO_EXTENSION);
+        mkdir($target);
+        $content = $zip->getFromIndex($idx);
+        file_put_contents($target . '/image.' . $ext, $content);
+        file_put_contents($target . '/page-html.html', '<img src="image.' . $ext . '?v" style="width: 100%;">');
+        continue;
     } else {
         try {
         $cmd = sprintf("pdftohtml -c %s -s %s",

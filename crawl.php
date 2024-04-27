@@ -18,6 +18,62 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['10008'] = function() { // 南投縣
+            $url = 'https://www.ntfd.gov.tw/index.php?act=article&code=list&ids=128';
+            $doc = new DOMDocument();
+            @$doc->loadHTML(Helper::http($url));
+            foreach ($doc->getElementsByTagName('a') as $a_dom) {
+                if ($a_dom->getAttribute('class') != 'mapLink') {
+                    continue;
+                }
+                $detail_url = 'https://www.ntfd.gov.tw' . $a_dom->getAttribute('href');
+                $title = $a_dom->getAttribute('title');
+                if (!preg_match('#(.*[鄉鎮市區])$#u', $title)) {
+                    continue;
+                }
+                $doc2 = new DOMDocument();
+                @$doc2->loadHTML(Helper::http($detail_url));
+                $url = null;
+                foreach ($doc2->getElementsByTagName('a') as $a_dom2) {
+                    if (!preg_match('#\(zip\)#u', $a_dom2->getAttribute('title'), $matches)) {
+                        continue;
+                    }
+                    $url = 'https://www.ntfd.gov.tw' . $a_dom2->getAttribute('href');
+                    break;
+                }
+                if (is_null($url)) {
+                    throw new Exception("No zip file found in $title $detail_url");
+                }
+
+                error_log($title . ' ' . $url);
+                $target = Helper::http($url, true);
+                $zip = new ZipArchive;
+                $zip->open($target);
+                $village_seq = [];
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $name = $zip->getNameIndex($i);
+                    // skip directory
+                    if (substr($name, -1) == '/') {
+                        continue;
+                    }
+                    if (preg_match('#/\d+(.*[鄉鎮市區].*[村里])防災地圖#u', $name, $matches)) {
+                        $village_id = Helper::getVillageIdByFullName('南投縣' . $matches[1]);
+                        if (isset($village_seq[$village_id])) {
+                            $village_seq[$village_id] ++;
+                            $type = 'tw.all' . $village_seq[$village_id];
+                        } else {
+                            $village_seq[$village_id] = 1;
+                            $type = 'tw.all';
+                        } 
+                        self::addLog($village_id, $type, $url, 'zip:' . $i);
+                    } else {
+                    }
+                }
+                if (!$village_seq) {
+                    throw new Exception("No village found in $url");
+                }
+            }
+        };
         $crawls['63000050'] = function() { // 臺北市中正區
             $urls = [
                 '松山區' => 'https://ssdo.gov.taipei/News_Content.aspx?n=48A0A8BA1E719FF2&sms=50B23E5C03F3888E&s=58D006985F09C3D8',
