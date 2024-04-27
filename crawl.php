@@ -18,6 +18,27 @@ class Crawler
         self::$_log_fp = $fp;
 
         $crawls = [];
+        $crawls['63000050'] = function() { // 臺北市中正區
+            $doc = new DOMDocument();
+            $url = 'https://zzdo.gov.taipei/cp.aspx?n=0DE5F70690B4A156&s=7F52E41274E23612';
+            $content = Helper::http($url);
+            $content = str_replace('<head>', '<head><meta charset="utf-8">', $content);
+            @$doc->loadHTML($content);
+            foreach ($doc->getElementsByTagName('a') as $a_dom) {
+                $title = $a_dom->getAttribute('title');
+                if (preg_match('#\d+(.*區.*里)_中文\(pdf檔\)#', $title, $matches)) {
+                    $pdf_url = $a_dom->getAttribute('href');
+                    $village_id = Helper::getVillageIdByFullName('臺北市' . $matches[1]);
+                    self::addLog($village_id, 'tw.all', $pdf_url);
+                } else if (preg_match('#Taipei City Evacuation Map\(pdf檔\)#', $title, $matches)) {
+                    $pdf_url = $a_dom->getAttribute('href');
+                    self::addLog($village_id, 'en.all', $pdf_url);
+                } else {
+                    continue;
+                }
+            }
+        };
+
         $crawls['66000'] = function() { // 臺中市
             $parse_lpsimplelist = function($url) {
                 $doc = new DOMDocument();
