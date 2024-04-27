@@ -29,6 +29,7 @@ class Crawler
                 '信義區.en' => 'https://xydo.gov.taipei/cp.aspx?n=825EBB2052804CE4&s=30F9BFCBC1B2A814',
                 '萬華區' => 'https://whdo.gov.taipei/News_Content.aspx?n=4957A99423B9DAE6&sms=299A4C13E7D72D89&s=DFB8D06FC981EE4C',
                 '萬華區.en' => 'https://whdo.gov.taipei/News_Content.aspx?n=4957A99423B9DAE6&sms=299A4C13E7D72D89&s=E1DCFBB68F520C53',
+                '文山區' => 'https://wsdo.gov.taipei/cp.aspx?n=97D391D1851ABA07&ccms_cs=1&ccms_cs=1',
             ];
             foreach ($urls as $townname => $url) {
                 $doc = new DOMDocument();
@@ -40,12 +41,19 @@ class Crawler
                     if (!$pdf_url = $a_dom->getAttribute('href')) {
                         continue;
                     };
+                    $title = str_replace('-', '_', $title);
                     if (preg_match('#\d+(.*區.*里)_中文\(pdf檔\)#', $title, $matches)) {
                         $village_id = Helper::getVillageIdByFullName('臺北市' . $matches[1]);
                         self::addLog($village_id, 'tw.all', $pdf_url);
                     } elseif (preg_match('#(..區..里)_中文#u', $title, $matches)) {
                         $village_id = Helper::getVillageIdByFullName('臺北市' . $matches[1]);
                         self::addLog($village_id, 'tw.all', $pdf_url);
+                    } elseif (preg_match('#\d+(..區..里)簡易疏散避難地圖_中文版#u', $title, $matches)) {
+                        $village_id = Helper::getVillageIdByFullName('臺北市' . $matches[1]);
+                        self::addLog($village_id, 'tw.all', $pdf_url);
+                    } elseif (preg_match('#\d+(..區..里)簡易疏散避難地圖_英文版#u', $title, $matches)) {
+                        $village_id = Helper::getVillageIdByFullName('臺北市' . $matches[1]);
+                        self::addLog($village_id, 'en.all', $pdf_url);
                     } elseif (preg_match('#(..區..里)_英文#u', $title, $matches)) {
                         $village_id = Helper::getVillageIdByFullName('臺北市' . $matches[1]);
                         self::addLog($village_id, 'en.all', $pdf_url);
